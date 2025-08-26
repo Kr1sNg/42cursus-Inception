@@ -587,4 +587,49 @@ docker compose down --volumes #to clear also the volumes
 
 ## Part 8: Image-building best practice
 
+### 1. Image layering
+
+- To see the layers in the image we created
+
+```bash
+docker image history getting-started
+```
+
+In the output, each of the lines represents a layer in the image. The display here shows the base at the bottom with the newest layer at the top. Using this, we can also quickly see the size of each layer, helping diagnose large images.
+
+
+### 2. Layer caching
+
+Once a layer changes, all downstream layers have to be recreated as well.
+
+We can easily see that each command in the `Dockerfile` becomes a new layer in the image. When we make a change to the image, the yarn dependencies have to be reinstalled, and it doesn't make sense to ship around the same dependencies every time we build. So we should update the `Dockerfile`
+
+- Update the `Dockerfile` to copy in the `package.json` first, install dependencies, then copy everyting else in
+
+```Dockerfile
+# syntax=docker/dockerfile:1
+FROM node:lts-alpine
+WORKDIR /app
+COPY package.json yarn.lock ./
+RUN yarn install --production
+COPY . .
+CMD ["node", "src/index.js"]
+```
+
+- Build a new image using updated `Dockerfile`
+
+```bash
+docker build -t <login-id>/getting-started .
+```
+
+- In file `src/static/index.html`, change `<title>` become "Awesome Todo App"
+
+- Re-build image again and see the differences
+
+```bash
+docker build -t <login-id>/getting-started .
+```
+
+We can notice that the build was much faster, and there're few steps are using previously cached layers.
+
 ## Part 9: What next
